@@ -35,10 +35,10 @@ def get_stats(x):
     return {
         'min': np.min(x),
         'max': np.max(x),
-        'mean': m,
-        'std': s,
-        'conf_l': m-conf_width,
-        'conf_h': m+conf_width,
+        'mean': np.round(m,2),
+        'std': np.round(s,2),
+        'conf_l': np.round(m-conf_width,2),
+        'conf_h': np.round(m+conf_width,2),
     }
 if __name__ == "__main__":
     sensor = SDS011(SERIALPORT, use_query_mode=True)
@@ -74,7 +74,8 @@ if __name__ == "__main__":
                     data_day=[]
 
 
-                new_obs={'pm25': get_stats(values[0]), 'pm10': get_stats(values[0]), 'time': time.strftime("%d-%m-%Y %H:%M:%S")}
+                new_obs={'pm25': get_stats(values[0]), 'pm10': get_stats(values[1]), 'time': time.strftime("%d-%m-%Y %H:%M:%S")}
+                logcmd(new_obs)
 
 
                 # check if length is more than STORED_READ_NUM and delete first/oldest element
