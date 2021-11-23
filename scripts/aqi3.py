@@ -4,6 +4,7 @@ import sys
 import json
 import time
 from sds011 import SDS011
+import numpy as np
 
 # CONFIGURATION
 SERIALPORT = "/dev/ttyUSB0"  # USB port where SDS011 is
@@ -27,6 +28,18 @@ def logcmd(text):
 
 # Don't change
 DATA_FILE = '/var/www/html/assets/aqi.json'
+def get_stats(x):
+    m=np.mean(x)
+    s=np.std(x)
+    conf_width=(1.96*s)/np.sqrt(len(x))
+    return {
+        'min': np.min(x),
+        'max': np.max(x),
+        'mean': m,
+        'std': s,
+        'conf_l': m-conf_width,
+        'conf_h': m+conf_width,
+    }
 if __name__ == "__main__":
     sensor = SDS011(SERIALPORT, use_query_mode=True)
     if 'stop' in sys.argv:
@@ -40,24 +53,39 @@ if __name__ == "__main__":
             values = None
             for t in range(READINGS):
                 time.sleep(SLEEP_BETWEEN_READS)
-                values = sensor.query()
-                if values is not None and len(values) == 2:
-                    logcmd(str(t + 1) + "# PM2.5: " + str(values[0]) + ", PM10: " + str(values[1]))
+                valuest = sensor.query()
+                if valuest is not None and len(valuest) == 2:
+                    if values==None:
+                        values=[[],[]]
+                    values[0].append(valuest[0])
+                    values[1].append(valuest[1])
+                    logcmd(str(t + 1) + "# PM2.5: " + str(valuest[0]) + ", PM10: " + str(valuest[1]))
 
             if values is not None and len(values) == 2:
                 # open stored data
                 with open(DATA_FILE) as json_data:
                     data = json.load(json_data)
 
+                DATA_FILE_DAY = '/var/www/html/air_quality/{}.json'.format(time.strftime("%Y-%m-%d"))
+                with open(DATA_FILE_DAY) as json_data:
+                    data_day = json.load(json_data)
+
+
+                new_obs={'pm25': get_stats(values[0]), 'pm10': get_stats(values[0]), 'time': time.strftime("%d-%m-%Y %H:%M:%S")}
+
+
                 # check if length is more than STORED_READ_NUM and delete first/oldest element
                 while len(data) > STORED_READ_NUM:
                     data.pop(0)
 
                 # append new values
-                data.append({'pm25': values[0], 'pm10': values[1], 'time': time.strftime("%d-%m-%Y %H:%M:%S")})
+                data.append({'pm25': new_obs['pm25']['mean'], 'pm10': new_obs['pm10']['mean'], 'time': new_obs['time']})
+                data_day.append({'pm25': new_obs['pm25']['mean'], 'pm10': new_obs['pm10']['mean'], 'time': new_obs['time']})
 
                 # save it
                 with open(DATA_FILE, 'w') as outfile:
+                    json.dump(data, outfile)
+                with open(DATA_FILE_DAY, 'w') as outfile:
                     json.dump(data, outfile)
 
             if UPDATE_FREQUENCY > 0:
