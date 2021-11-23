@@ -67,8 +67,11 @@ if __name__ == "__main__":
                     data = json.load(json_data)
 
                 DATA_FILE_DAY = '/var/www/html/air_quality/{}.json'.format(time.strftime("%Y-%m-%d"))
-                with open(DATA_FILE_DAY) as json_data:
-                    data_day = json.load(json_data)
+                try:
+                    with open(DATA_FILE_DAY) as json_data:
+                        data_day = json.load(json_data)
+                except:
+                    data_day=[]
 
 
                 new_obs={'pm25': get_stats(values[0]), 'pm10': get_stats(values[0]), 'time': time.strftime("%d-%m-%Y %H:%M:%S")}
